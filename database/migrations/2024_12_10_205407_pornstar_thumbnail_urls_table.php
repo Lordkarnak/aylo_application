@@ -11,9 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pornstar_stats', function (Blueprint $table) {
+        Schema::create('pornstar_thumbnail_urls', function (Blueprint $table) {
             $table->id();
-            $table->timestamps();
+            $table->foreignId('pornstar_thumbnail_id')->constrained();
+            $table->text('url');
         });
     }
 
@@ -22,6 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pornstar_stats');
+        Schema::dropIfExists('pornstar_thumbnail_urls');
     }
 };

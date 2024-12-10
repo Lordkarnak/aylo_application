@@ -11,8 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('pornstar_attributes', function (Blueprint $table) {
+        Schema::create('pornstar_aliases', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('pornstar_id')->constrained();
+            $table->string('alias');
             $table->timestamps();
         });
     }
@@ -22,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('pornstar_attributes');
+        Schema::dropIfExists('pornstar_aliases');
     }
 };

@@ -19,7 +19,7 @@ class DownloadJsonContents extends Command
      *
      * @var string
      */
-    protected $signature = 'app:download-json-contents';
+    protected $signature = 'app:get-pornstars';
 
     /**
      * The console command description.
@@ -59,6 +59,7 @@ class DownloadJsonContents extends Command
 
         if ($data) {
             $this->info("Info fetched successfully.");
+            dd($data);
 
             $record = Pornstar::updateOrCreate(
                 ["id" => $data['id']],
