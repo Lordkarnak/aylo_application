@@ -5,17 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class PornstarAlias extends Model
+class PornstarThumbnailUrl extends Model
 {
     /**
      * The attributes that are mass assignable.
      *
      * @var array
      */
-    protected $fillable = ['id', 'pornstar_id', 'alias'];
+    protected $fillable = ['id', 'pornstar_thumbnail_id', 'url'];
 
-    public function pornstar() : BelongsTo
+    public function pornstar_thumbnail() : BelongsTo
     {
-        return $this->belongsTo(Pornstar::class);
+        return $this->belongsTo(PornstarThumbnail::class);
     }
 }

@@ -59,7 +59,7 @@ class DownloadJsonContents extends Command
 
         if ($data) {
             $this->info("Info fetched successfully.");
-            dd($data);
+            // dd($data);
 
             $record = Pornstar::updateOrCreate(
                 ["id" => $data['id']],
