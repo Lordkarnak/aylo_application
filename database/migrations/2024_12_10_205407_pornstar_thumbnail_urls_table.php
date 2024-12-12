@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('pornstar_thumbnail_id')->constrained();
             $table->text('url');
+            $table->timestamps();
         });
     }
 
