@@ -28,7 +28,7 @@ return new class extends Migration
             $table->string("breast_type", 5);
             $table->string("gender", 20);
             $table->string("orientation", 40);
-            $table->integer("age", false, true);
+            $table->unsignedInteger("age");
 
             // stats
             $table->mediumInteger("subscriptions");

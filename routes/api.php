@@ -10,3 +10,9 @@ Route::get('/user', function (Request $request) {
 
 Route::get('/pornstars', [PornstarController::class, 'index']
 )->middleware('auth:sanctum');
+
+Route::get('/pornstars/{id}', [PornstarController::class, 'show']
+)->middleware('auth:sanctum');
+
+Route::get('/pornstars/refresh', [PornstarController::class, 'refresh']
+)->middleware('auth:sanctum');
