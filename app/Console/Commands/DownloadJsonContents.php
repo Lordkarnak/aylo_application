@@ -42,23 +42,31 @@ class DownloadJsonContents extends Command
         try {
             $service = new PornstarService();
             $items = $service->fetch($url);
-            foreach ($items as $item) {
-                $this->line("Storing item...");
-                // $pornstar = $service->store($item);
-                $pornstar = Pornstar::find($item['id'])->first();
-                
-                $this->line("Caching images...");
-                $service->cache($pornstar);
 
-                $cachedImage = $service->retrieveCachedImage($pornstar);
-                $this->line("Retrieved cached image data: ");
-                $this->line($cachedImage ?: 'null');
+            // a progress bar to beautify this process
+            $bar = $this->output->createProgressBar(count($items));
+            $bar->start();
+
+            foreach ($items as &$item) {
+                try {
+                    $pornstar = $service->store($item);
+                    $service->cache($pornstar);
+                } catch (\Exception $e) {
+                    $this->error($e->getMessage());
+                }
+
+                // $cachedImage = $service->retrieveCachedImage($pornstar);
+                // $this->line("Retrieved cached image data: ");
+                // $this->line($cachedImage ?: 'null');
+
+                // $service->invalidateCachedImage($pornstar);
+                $bar->advance();
             }
         } catch (\Exception $e) {
             $this->error($e->getMessage());
-            exit;
         }
 
+        $bar->finish();
         $this->info("Info fetched and saved successfully.");
         exit;
     }

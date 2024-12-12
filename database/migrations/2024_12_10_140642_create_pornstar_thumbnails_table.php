@@ -14,9 +14,10 @@ return new class extends Migration
         Schema::create('pornstar_thumbnails', function (Blueprint $table) {
             $table->id();
             $table->foreignId('pornstar_id')->constrained();
-            $table->integer('height');
-            $table->integer('width');
+            $table->integer('height')->nullable()->default(null);
+            $table->integer('width')->nullable()->default(null);
             $table->enum('type', ['pc', 'mobile', 'tablet']);
+            $table->tinyInteger('cached')->nullable()->default(0);
             $table->timestamps();
         });
     }

@@ -14,32 +14,32 @@ return new class extends Migration
         Schema::create('pornstars', function (Blueprint $table) {
             // base data
             $table->id();
-            $table->string("name", 400);
-            $table->string("license");
-            $table->smallInteger("wl_status");
-            $table->text("link");
+            $table->string("name", 400)->nullable()->default(null);
+            $table->string("license")->nullable()->default(null);
+            $table->smallInteger("wl_status")->nullable()->default(null);
+            $table->text("link")->nullable()->default(null);
 
             // attributes
-            $table->string("hair_color", 40);
-            $table->string("ethnicity", 40);
-            $table->string("tattoos", 40);
-            $table->string("piercings", 40);
-            $table->string("breast_size", 40);
-            $table->string("breast_type", 5);
-            $table->string("gender", 20);
-            $table->string("orientation", 40);
-            $table->unsignedInteger("age");
+            $table->string("hair_color", 40)->nullable()->default(null);
+            $table->string("ethnicity", 40)->nullable()->default(null);
+            $table->string("tattoos", 40)->nullable()->default(null);
+            $table->string("piercings", 40)->nullable()->default(null);
+            $table->string("breast_size", 40)->nullable()->default(null);
+            $table->string("breast_type", 5)->nullable()->default(null);
+            $table->string("gender", 20)->nullable()->default(null);
+            $table->string("orientation", 40)->nullable()->default(null);
+            $table->unsignedInteger("age")->nullable()->default(null);
 
             // stats
-            $table->mediumInteger("subscriptions");
-            $table->mediumInteger("monthly_searches");
-            $table->mediumInteger("views");
-            $table->mediumInteger("videos_count");
-            $table->mediumInteger("premium_videos_count");
-            $table->mediumInteger("white_label_video_count");
-            $table->mediumInteger("rank");
-            $table->mediumInteger("rank_premium");
-            $table->mediumInteger("rank_wl");
+            $table->mediumInteger("subscriptions")->nullable()->default(null);
+            $table->mediumInteger("monthly_searches")->nullable()->default(null);
+            $table->mediumInteger("views")->nullable()->default(null);
+            $table->mediumInteger("videos_count")->nullable()->default(null);
+            $table->mediumInteger("premium_videos_count")->nullable()->default(null);
+            $table->mediumInteger("white_label_video_count")->nullable()->default(null);
+            $table->mediumInteger("rank")->nullable()->default(null);
+            $table->mediumInteger("rank_premium")->nullable()->default(null);
+            $table->mediumInteger("rank_wl")->nullable()->default(null);
 
             // stamps
             $table->timestamps();
