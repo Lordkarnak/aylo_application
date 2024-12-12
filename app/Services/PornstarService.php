@@ -6,11 +6,13 @@ use App\Models\Pornstar;
 use App\Models\PornstarAlias;
 use App\Models\PornstarThumbnail;
 use App\Models\PornstarThumbnailUrl;
+use Cache;
+use Http;
 use Illuminate\Support\Collection;
 
 class PornstarService
 {
-    public function fetchAndSave(string $url)
+    public function fetchAndSave(string $url): bool
     {
         $data = $this->fetch($url);
         if (!$data) {
@@ -21,12 +23,14 @@ class PornstarService
             $pornstar = $this->store($record);
             $this->cache($pornstar);
         }
+
+        return true;
     }
     
     public function fetch(string $url): array
     {
         if (empty($url)) { return []; }
-        
+
         // For testing, use this properly formatted stream
         $stream = '[{"attributes":{"hairColor":"Blonde","ethnicity":"White","tattoos":true,"piercings":true,"breastSize":34,"breastType":"A","gender":"female","orientation":"straight","age":43,"stats":{"subscriptions":5687,"monthlySearches":822300,"views":458473,"videosCount":52,"premiumVideosCount":27,"whiteLabelVideoCount":42,"rank":4298,"rankPremium":4401,"rankWl":4104}},"id":2,"name":"Aaliyah Jolie","license":"REGULAR","wlStatus":"1","aliases":["Aliyah Julie","Aliyah Jolie","Aaliyah","Macy"],"link":"https:\/\/www.pornhub.com\/pornstar\/aaliyah-jolie","thumbnails":[{"height":344,"width":234,"type":"pc","urls":["https:\/\/ei.phncdn.com\/pics\/pornstars\/000\/000\/002\/(m=lciuhScOb_c)(mh=5Lb6oqzf58Pdh9Wc)thumb_22561.jpg"]},{"height":344,"width":234,"type":"mobile","urls":["https:\/\/ei.phncdn.com\/pics\/pornstars\/000\/000\/002\/(m=lciuhScOb_c)(mh=5Lb6oqzf58Pdh9Wc)thumb_22561.jpg"]},{"height":344,"width":234,"type":"tablet","urls":["https:\/\/ei.phncdn.com\/pics\/pornstars\/000\/000\/002\/(m=lciuhScOb_c)(mh=5Lb6oqzf58Pdh9Wc)thumb_22561.jpg"]}]}]';
         return json_decode($stream, true, 4096, JSON_THROW_ON_ERROR + JSON_INVALID_UTF8_IGNORE);
@@ -45,10 +49,54 @@ class PornstarService
 
     public function cache(Pornstar $pornstar)
     {
+        if (empty($pornstar)) {
+            throw new \Exception('No pornstar present. Skipping cache.');
+        }
+
+        if (!$pornstar->thumbnails()->exists()) {
+            throw new \Exception('Pornstar has no thumbnails. Skipping cache.');
+        }
+
+        $urls = collect([]);
+        foreach ($pornstar->thumbnails as $thumbnail) {
+            if (!$thumbnail->urls()->exists()) {
+                continue;
+            }
+
+            // Collect all urls of all thumbnails
+            $urls->merge($thumbnail->urls);
+        }
+
+        // Ensure no duplicate urls get fetched, as per requirement.
+        $urls = $urls->unique('url');
+        foreach ($urls as $item) {
+            // cache
+            $key = 'thumb_' . $pornstar->id . '_' . $item->pornstar_thumbnail_id;
+            $content = Http::get($item->url)->body();
+            Cache::add($key, $content, now()->addDay());
+        }
+    }
+
+    public function invalidateCache(PornstarThumbnail $pornstar)
+    {
 
     }
 
-    private function store(array $record): Pornstar
+    public function retrieveCachedImage(Pornstar $pornstar, ?PornstarThumbnail $thumbnail = null) : string|null
+    {
+        if (empty($pornstar)) {
+            throw new \Exception("No pornstar present. Could not retrieve cache for an empty reference.");
+        }
+        if (empty($thumbnail)) {
+            $key = 'thumb_' . $pornstar->id . '_' . $pornstar->thumbnails[0]->id;
+        } else {
+            $key = 'thumb_' . $pornstar->id . '_' . $thumbnail->id;
+        }
+
+        return Cache::get($key);
+    }
+
+    public function store(array $record): Pornstar
     {
         $recordCollection = collect($record);
         $attributes = $recordCollection->pull('attributes');
