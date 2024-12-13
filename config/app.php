@@ -123,4 +123,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'feed_url' => env('APP_FEED_URL', "https://ph-c3fuhehkfqh6huc0.z01.azurefd.net/feed_pornstars.json"),
+
 ];

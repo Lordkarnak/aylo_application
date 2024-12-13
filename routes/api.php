@@ -16,15 +16,16 @@ Route::get('/pornstars', [PornstarController::class, 'index']);
 Route::get('/pornstars/{id}', [PornstarController::class, 'show']);
 // )->middleware('auth:sanctum');
 
+Route::get('/pornstars/{id}/thumbnails/{thumb_id}', [PornstarController::class, 'getThumbnail']);
+
 // prevent get requests on this post route
-Route::get('/pornstars/refreshData', function(Request $request) {
+Route::get('/pornstars/{pornstar}/refreshCache', function(Request $request) {
     abort(400);
 });
 
-// prevent get requests on this post route
-Route::get('/pornstars/refreshCache', function(Request $request) {
-    abort(400);
-});
+// force a manual refresh of cache
+Route::post('/pornstars/{pornstar}/refreshCache', [PornstarController::class, 'refreshCache']);
+// )->middleware('auth:sanctum');
 
 // prevent users from posting to the get api
 Route::post('/pornstars', function(Request $request) {
@@ -35,11 +36,3 @@ Route::post('/pornstars', function(Request $request) {
 Route::post('/pornstars/{id}', function(Request $request, string $id) {
     abort(400);
 });
-
-// force a manual refresh of data and recaching images
-Route::post('/pornstars/refreshData', [PornstarController::class, 'refreshData']
-)->middleware(['throttle:']);
-
-// force a manual refresh of cache
-Route::post('/pornstars/refreshCache', [PornstarController::class, 'refreshCache']);
-// )->middleware('auth:sanctum');

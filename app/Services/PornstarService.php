@@ -19,21 +19,17 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 
 class PornstarService
 {
-    public bool $debug = false;
+    public bool $debug = true;
     
-    public function fetchAndSave(string $url): bool
+    public function fetchAndSave(string $url)
     {
         $data = $this->fetch($url);
         if (!$data) {
             throw new \Exception("Could not parse data.");
         }
 
-        foreach ($data as $record) {
-            $pornstar = $this->store($record);
-            $this->cache($pornstar);
-        }
-
-        return true;
+        $this->store($data);
+        $this->cache();
     }
     
     public function fetch(string $url): array
@@ -187,150 +183,177 @@ class PornstarService
         return $pornstar;
     }
 
-    public function store(array $items, $withProgressBar = false)
+    public function store(array &$items, $withProgressBar = false)
     {
         // $pornstarRecords = [];
         // $thumbnailRecords = [];
         // $urlsRecords = [];
         
-        $consoleOutput = new ConsoleOutput();
-        $progress = new ProgressBar($consoleOutput, array_key_last($items));
-        $progress->start();
+        if ($withProgressBar) {
+            $consoleOutput = new ConsoleOutput();
+            $progress = new ProgressBar($consoleOutput, array_key_last($items));
+            $progress->start();
+        }
 
         while (!empty($items)) {
             try {
-            // get an item
-            $item = array_pop($items);
+                // get an item
+                $item = array_pop($items);
 
-            // prepare pornstar
-            $pornstar = [
-                'id' => $item['id'],
-                'name' => $item['name'] ?? null,
-                'license' => $item['license'] ?? null,
-                'wl_status' =>  $item['wlStatus'] ?? null,
-                'link' => $item['link'] ?? null,
+                // prepare pornstar
+                $pornstar = [
+                    'id' => $item['id'],
+                    'name' => $item['name'] ?? null,
+                    'license' => $item['license'] ?? null,
+                    'wl_status' =>  $item['wlStatus'] ?? null,
+                    'link' => $item['link'] ?? null,
 
-                // attributes
-                'hair_color' => $item['attributes']['hairColor'] ?? null,
-                'ethnicity' => $item['attributes']['ethnicity'] ?? null,
-                'tattoos' => $item['attributes']['tattoos'] ?? null,
-                'piercings' =>  $item['attributes']['piercings'] ?? null,
-                'breast_size' => $item['attributes']['breastSize'] ?? null,
-                'breast_type' => $item['attributes']['breastType'] ?? null,
-                'gender' => $item['attributes']['gender'] ?? null,
-                'orientation' => $item['attributes']['orientation'] ?? null,
-                'age' => $item['attributes']['age'] ?? null,
+                    // attributes
+                    'hair_color' => $item['attributes']['hairColor'] ?? null,
+                    'ethnicity' => $item['attributes']['ethnicity'] ?? null,
+                    'tattoos' => $item['attributes']['tattoos'] ?? null,
+                    'piercings' =>  $item['attributes']['piercings'] ?? null,
+                    'breast_size' => $item['attributes']['breastSize'] ?? null,
+                    'breast_type' => $item['attributes']['breastType'] ?? null,
+                    'gender' => $item['attributes']['gender'] ?? null,
+                    'orientation' => $item['attributes']['orientation'] ?? null,
+                    'age' => $item['attributes']['age'] ?? null,
 
-                // attributes -> stats
-                'subscriptions' => $item['attributes']['stats']['subscriptions'] ?? null,
-                'monthly_searches' => $item['attributes']['stats']['monthlySearches'] ?? null,
-                'views' => $item['attributes']['stats']['views'] ?? null,
-                'videos_count' => $item['attributes']['stats']['videosCount'] ?? null,
-                'premium_videos_count' => $item['attributes']['stats']['premiumVideosCount'] ?? null,
-                'white_label_video_count' => $item['attributes']['stats']['whiteLabelVideoCount'] ?? null,
-                'rank' => $item['attributes']['stats']['rank'] ?? null,
-                'rank_premium' => $item['attributes']['stats']['rankPremium'] ?? null,
-                'rank_wl' => $item['attributes']['stats']['rankWl'] ?? null
-            ];
-
-            // store pornstar
-            DB::table('pornstars')->upsert($pornstar, 'id', [
-                'id',
-                'name',
-                'license',
-                'wl_status',
-                'link',
-                'hair_color',
-                'ethnicity',
-                'tattoos',
-                'piercings',
-                'breast_size',
-                'breast_type',
-                'gender',
-                'orientation',
-                'age',
-                'subscriptions',
-                'monthly_searches',
-                'views',
-                'videos_count',
-                'premium_videos_count',
-                'white_label_video_count',
-                'rank',
-                'rank_premium',
-                'rank_wl'
-            ]);
-
-            // clear aliases, in case something changed in aliases size
-            // delete without first selecting records to view size as we have to process too many lines and we need to reduce db calls and processing logic as much as possible.
-            DB::table('pornstar_aliases')->where('pornstar_id', $item['id'])->delete();
-            
-            // prepare aliases
-            $aliases = [];
-            foreach ($item['aliases'] as $alias) {
-                $aliases[] = [
-                    'pornstar_id' => $item['id'],
-                    'alias' => $alias
+                    // attributes -> stats
+                    'subscriptions' => $item['attributes']['stats']['subscriptions'] ?? null,
+                    'monthly_searches' => $item['attributes']['stats']['monthlySearches'] ?? null,
+                    'views' => $item['attributes']['stats']['views'] ?? null,
+                    'videos_count' => $item['attributes']['stats']['videosCount'] ?? null,
+                    'premium_videos_count' => $item['attributes']['stats']['premiumVideosCount'] ?? null,
+                    'white_label_video_count' => $item['attributes']['stats']['whiteLabelVideoCount'] ?? null,
+                    'rank' => $item['attributes']['stats']['rank'] ?? null,
+                    'rank_premium' => $item['attributes']['stats']['rankPremium'] ?? null,
+                    'rank_wl' => $item['attributes']['stats']['rankWl'] ?? null
                 ];
-            }
-            
-            // store new aliases
-            DB::table('pornstar_aliases')->insert($aliases);
 
-
-            // clear thumbnails and links, in case something changed in thumbnails size
-            // delete without first selecting records to view size as we have to process too many lines and we need to reduce db calls and processing logic as much as possible.
-            DB::table('pornstar_thumbnails')->where('pornstar_id', $item['id'])->delete();
-            DB::table('pornstar_thumbnail_urls')->where('pornstar_id', $item['id'])->delete();
-
-            // clear cache for these links
-            $this->invalidateCachedImage($item['id']);
-            
-            foreach ($item['thumbnails'] as $thumbnail) {
-                // prepare and store thumbnail
-                $thumbnailId = DB::table('pornstar_thumbnails')->insertGetId([
-                    'pornstar_id' => $item['id'],
-                    'height' => $thumbnail['height'] ?? null,
-                    'width' => $thumbnail['width'] ?? null,
-                    'type' => $thumbnail['type'] ?? 'pc',
+                // store pornstar
+                DB::table('pornstars')->upsert($pornstar, 'id', [
+                    'id',
+                    'name',
+                    'license',
+                    'wl_status',
+                    'link',
+                    'hair_color',
+                    'ethnicity',
+                    'tattoos',
+                    'piercings',
+                    'breast_size',
+                    'breast_type',
+                    'gender',
+                    'orientation',
+                    'age',
+                    'subscriptions',
+                    'monthly_searches',
+                    'views',
+                    'videos_count',
+                    'premium_videos_count',
+                    'white_label_video_count',
+                    'rank',
+                    'rank_premium',
+                    'rank_wl'
                 ]);
 
-                // prepare and store urls for thumbnail
-                foreach ($thumbnail['urls'] as $url) {
-                    DB::table('pornstar_thumbnail_urls')->insert([
+                // clear aliases, in case something changed in aliases size
+                // delete without first selecting records to view size as we have to process too many lines and we need to reduce db calls and processing logic as much as possible.
+                DB::table('pornstar_aliases')->where('pornstar_id', $item['id'])->delete();
+                
+                // prepare aliases
+                $aliases = [];
+                foreach ($item['aliases'] as $alias) {
+                    $aliases[] = [
                         'pornstar_id' => $item['id'],
-                        'pornstar_thumbnail_id' => $thumbnailId,
-                        'url' => $url
-                    ]);
+                        'alias' => $alias
+                    ];
                 }
-            }
-            $progress->advance();
+                
+                // store new aliases
+                DB::table('pornstar_aliases')->insert($aliases);
+
+
+                // clear thumbnails and links, in case something changed in thumbnails size
+                // delete without first selecting records to view size as we have to process too many lines and we need to reduce db calls and processing logic as much as possible.
+                DB::table('pornstar_thumbnails')->where('pornstar_id', $item['id'])->delete();
+                DB::table('pornstar_thumbnail_urls')->where('pornstar_id', $item['id'])->delete();
+
+                // clear cache for these links
+                $this->invalidateCachedImage($item['id']);
+                
+                foreach ($item['thumbnails'] as $thumbnail) {
+                    // prepare and store thumbnail
+                    $thumbnailId = DB::table('pornstar_thumbnails')->insertGetId([
+                        'pornstar_id' => $item['id'],
+                        'height' => $thumbnail['height'] ?? null,
+                        'width' => $thumbnail['width'] ?? null,
+                        'type' => $thumbnail['type'] ?? 'pc',
+                    ]);
+
+                    // prepare and store urls for thumbnail
+                    foreach ($thumbnail['urls'] as $url) {
+                        DB::table('pornstar_thumbnail_urls')->insert([
+                            'pornstar_id' => $item['id'],
+                            'pornstar_thumbnail_id' => $thumbnailId,
+                            'url' => $url
+                        ]);
+                    }
+                }
             } catch (\Exception $e) {
-                $progress->clear();
+                if ($withProgressBar) { $progress->clear(); }
+
                 if ($this->debug) {
                     $consoleOutput->write($e->getMessage(), $newline = true);
                 }
-                $progress->display();
+                
+                if ($withProgressBar) { $progress->display(); }
             }
+
+            if ($withProgressBar) { $progress->advance(); }
         }
-        $progress->finish();
+        
+        if ($withProgressBar) { $progress->finish(); }
     }
 
-    public function cache()
+    public function cache($withProgressBar = false)
     {
-        $items = DB::table('pornstar_thumbnail_urls')->selectRaw('ANY(pornstar_id), ANY(pornstar_thumbnail_id), DISTINCT(url)')->where('cached', 0)->get();
-        while (!empty($items)) {
-            $item = array_pop($item);
-            $key = 'thumb_' . $item->pornstar_id . '_' . $item->pornstar_thumbnail_id;
-            if (!Cache::has($key)) {
-                $response = Http::get($item->url);
-                $content = $response->body();
-                Cache::put($key, $content, now()->addDay());
-                DB::table('pornstar_thumbnail_urls')
-                    ->where('pornstar_id', $item->pornstar_id)
-                    ->where('pornstar_thumbnail_id', $item->pornstar_thumbnail_id)
-                    ->update(['cached' => 1]);
-            }
+        $items = DB::table('pornstar_thumbnail_urls')->select(DB::raw('MIN(pornstar_id) AS pornstar_id, MIN(pornstar_thumbnail_id) AS pornstar_thumbnail_id, url'))->groupBy('url')->where('cached', 0)->get();
+
+        if ($withProgressBar) {
+            $consoleOutput = new ConsoleOutput();
+            $progress = new ProgressBar($consoleOutput, $items->count());
+            $progress->start();
         }
+
+        while (!empty($items)) {
+            try {
+                $item = $items->pop();
+                $key = 'thumb_' . $item->pornstar_id . '_' . $item->pornstar_thumbnail_id;
+                if (!Cache::has($key)) {
+                    $response = Http::get($item->url);
+                    $content = $response->body();
+                    Cache::put($key, $content, now()->addDay());
+                    DB::table('pornstar_thumbnail_urls')
+                        ->where('pornstar_id', $item->pornstar_id)
+                        ->where('pornstar_thumbnail_id', $item->pornstar_thumbnail_id)
+                        ->update(['cached' => 1]);
+                }
+            } catch (\Exception $e) {
+                if ($withProgressBar) { $progress->clear(); }
+
+                if ($this->debug) {
+                    $consoleOutput->write($e->getMessage(), $newline = true);
+                }
+                
+                if ($withProgressBar) { $progress->display(); }
+            }
+
+            if ($withProgressBar) { $progress->advance(); }
+        }
+        
+        if ($withProgressBar) { $progress->finish(); }
     }
 
     public function cacheByPornstar(Pornstar $pornstar)
@@ -363,7 +386,9 @@ class PornstarService
             $content = Http::get($item->url)->body();
             Cache::put($key, $content, now()->addDay());
 
-            PornstarThumbnail::where('id', $item->pornstar_thumbnail_id)->update(['cached' => 1]);
+            PornstarThumbnailUrl::where('pornstar_id', $pornstar->id)
+                ->where('pornstar_thumbnail_id', $item->pornstar_thumbnail_id)
+                ->update(['cached' => 1]);
         }
     }
 

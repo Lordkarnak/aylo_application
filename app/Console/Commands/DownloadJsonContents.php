@@ -6,6 +6,7 @@ use App\Models\Pornstar;
 use App\Services\PornstarService;
 use File;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use PhpParser\PrettyPrinter;
 use PHPUnit\Framework\Constraint\IsEmpty;
@@ -27,7 +28,7 @@ class DownloadJsonContents extends Command
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Decode the incoming json and store pornstars and their thumbnails in local db';
 
     private $items = [];
 
@@ -36,14 +37,17 @@ class DownloadJsonContents extends Command
      */
     public function handle()
     {
-        $url = "https://ph-c3fuhehkfqh6huc0.z01.azurefd.net/feed_pornstars.json";
-        $this->info("Getting contents from json at $url");
+        $this->info("Getting contents from json at " . Config::get('app.feed_url'));
 
+        /** Ideally, this command would have a nice foreach and would call the service for every item that the service decoded.
+         * As the table is pretty large, I prefer to call the loops inside each function and remove the processed cells once done.
+         * I optimized the command memory requirements some more by passing the items array by reference so the items will vanish.
+         */
         try {
             $service = new PornstarService();
-            $items = $service->fetch($url);
-            $service->store($items, $withProgressBar = true);
-            $service->cache();
+            $items = $service->fetch(Config::get('app.feed_url'));
+            $service->store($items, true);
+            $service->cache(true);
 
             // a progress bar to beautify this process
             /* $bar = $this->output->createProgressBar(count($items));
