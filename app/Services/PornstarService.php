@@ -32,7 +32,7 @@ class PornstarService
         $this->cache();
     }
     
-    public function fetch(string $url): array
+    public function fetch(string $url, $bForce = false): array
     {
         if (empty($url)) { return []; }
 
@@ -42,11 +42,31 @@ class PornstarService
 
         // store the json file locally to process it, this way we don't hold the connection alive for the whole decoding period (of 5 seconds or so)
         if (!Storage::has("feed_pornstars.json") || !Storage::exists("feed_pornstars.json")) {
-
             $response = Http::get($url);
             if ($response->ok()) {
+                Cache::forever('feed_etag', $response->getHeader('ETag')[0]);
                 Storage::put("feed_pornstars.json", $response->body());
             }
+            $response->close();
+        }
+        // file exists, find if modified and download a new copy
+        else {
+            $lastModified = new Carbon(Storage::lastModified("feed_pornstars.json"));
+            $etag = Cache::get('feed_etag') ?? null;
+            $response = Http::withHeader('If-Modified-Since', $lastModified->toRfc7231String())
+                // ->withHeader('If-None-Match', $etag)
+                ->get($url);
+                
+            // Not modified, if not forced to run, exit
+            if ($response->status() === 304 && $bForce == false) {
+                throw new \Exception("File was not modified. Exiting...");
+            }
+            // modified, download
+            else if ($response->status() === 200) {
+                Cache::forever('feed_etag', $response->getHeader('ETag')[0]);
+                Storage::put("feed_pornstars.json", $response->body());
+            }
+
             $response->close();
         }
         
@@ -277,8 +297,8 @@ class PornstarService
 
                 // clear thumbnails and links, in case something changed in thumbnails size
                 // delete without first selecting records to view size as we have to process too many lines and we need to reduce db calls and processing logic as much as possible.
-                DB::table('pornstar_thumbnails')->where('pornstar_id', $item['id'])->delete();
                 DB::table('pornstar_thumbnail_urls')->where('pornstar_id', $item['id'])->delete();
+                DB::table('pornstar_thumbnails')->where('pornstar_id', $item['id'])->delete();
 
                 // clear cache for these links
                 $this->invalidateCachedImage($item['id']);
