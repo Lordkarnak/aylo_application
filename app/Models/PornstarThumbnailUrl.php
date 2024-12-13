@@ -12,7 +12,7 @@ class PornstarThumbnailUrl extends Model
      *
      * @var array
      */
-    protected $fillable = ['id', 'pornstar_thumbnail_id', 'url'];
+    protected $fillable = ['id', 'pornstar_thumbnail_id', 'url', 'cached'];
 
     public function pornstar_thumbnail() : BelongsTo
     {

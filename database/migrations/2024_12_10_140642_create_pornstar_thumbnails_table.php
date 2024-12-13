@@ -17,7 +17,6 @@ return new class extends Migration
             $table->integer('height')->nullable()->default(null);
             $table->integer('width')->nullable()->default(null);
             $table->enum('type', ['pc', 'mobile', 'tablet']);
-            $table->tinyInteger('cached')->nullable()->default(0);
             $table->timestamps();
         });
     }

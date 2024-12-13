@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\PornstarResource;
 use App\Models\Pornstar;
+use App\Services\PornstarService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,9 +36,24 @@ class PornstarController extends Controller
         return response()->json($response);
     }
 
-    public function refresh(): JsonResponse
+    public function refreshData(): JsonResponse
     {
-        $url = '';
+        $url = "https://ph-c3fuhehkfqh6huc0.z01.azurefd.net/feed_pornstars.json";
+        
+        $service = new PornstarService();
+        $items = $service->fetch($url);
+        $service->store($items);
+        $service->cache();
+
+        // service
+        return response()->json(['message' => 'Local data refreshed successfully.']);
+    }
+
+    public function refreshCache(): JsonResponse
+    {
+        $service = new PornstarService();
+        $service->cache();
+
         // service
         return response()->json(['message' => 'Local cache refreshed successfully.']);
     }

@@ -13,8 +13,10 @@ return new class extends Migration
     {
         Schema::create('pornstar_thumbnail_urls', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('pornstar_id')->constrained();
             $table->foreignId('pornstar_thumbnail_id')->constrained();
             $table->text('url');
+            $table->tinyInteger('cached')->nullable()->default(0);
             $table->timestamps();
         });
     }
