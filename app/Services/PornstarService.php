@@ -347,26 +347,34 @@ class PornstarService
 
     public function cache(array $items, $withProgressBar = false)
     {
-        // $items = DB::table('pornstar_thumbnail_urls')->select(DB::raw('MIN(pornstar_id) AS pornstar_id, MIN(pornstar_thumbnail_id) AS pornstar_thumbnail_id, url'))->groupBy('url')->where('cached', 0)->get();
+        // take all ids from items
+        $itemIds = [];
+        foreach ($items as $item) {
+            $itemIds[] = $item['id'];
+        }
 
-        $progressCount = count($items);
+        $urls = DB::table('pornstar_thumbnail_urls')->select(DB::raw('MIN(pornstar_id) AS pornstar_id, MIN(pornstar_thumbnail_id) AS pornstar_thumbnail_id, url'))
+            ->groupBy('url')
+            ->whereIn('pornstar_id', $itemIds)
+            ->get();
+
+        $progressCount = $urls->count();
         if ($withProgressBar) {
             $consoleOutput = new ConsoleOutput();
             $progress = new ProgressBar($consoleOutput, $progressCount);
             $progress->start();
         }
 
-        while (!empty($items)) {
+        while ($urls->isEmpty()) {
             try {
-                $item = array_pop($items);
-                $key = 'thumb_' . $item['pornstar_id'] . '_' . $item['pornstar_thumbnail_id'];
+                $url = $urls->pop();
+                $key = 'thumb_' . $url->pornstar_id . '_' . $url->pornstar_thumbnail_id;
                 if (!Cache::has($key)) {
-                    $response = Http::get($item->url);
-                    $content = $response->body();
-                    Cache::put($key, $content, now()->addDay());
+                    $response = Http::get($url->url);
+                    Cache::put($key, $response->body(), now()->addDay());
                     DB::table('pornstar_thumbnail_urls')
-                        ->where('pornstar_id', $item['pornstar_id'])
-                        ->where('pornstar_thumbnail_id', $item['pornstar_thumbnail_id'])
+                        ->where('pornstar_id', $url->pornstar_id)
+                        ->where('pornstar_thumbnail_id', $url->pornstar_thumbnail_id)
                         ->update(['cached' => 1]);
                 }
             } catch (\Exception $e) {
@@ -454,18 +462,28 @@ class PornstarService
         return $bSuccess;
     }
 
-    public function retrieveCachedImage(Pornstar $pornstar, ?PornstarThumbnail $thumbnail = null) : string|null
+    public function retrieveCachedImage(int $pornstar_id, ?PornstarThumbnail $thumbnail = null) : string|null
     {
-        if (empty($pornstar)) {
+        if (empty($pornstar_id)) {
             throw new \Exception("No pornstar present. Could not retrieve cache for an empty reference.");
         }
         if (empty($thumbnail)) {
-            $thumbnail = $pornstar->thumbnails->where('cached', 1)->first();
-            if ($thumbnail) {
-                $key = 'thumb_' . $pornstar->id . '_' . $thumbnail->id;
+            $urls = DB::table('pornstar_thumbnail_urls')->where('pornstar_id', $pornstar_id)->where('cached', 1)->get();
+            if ($urls) {
+                foreach ($urls as $url) {
+                    $key = 'thumb_' . $pornstar_id . '_' . $url->pornstar_thumbnail_id;
+                    if (Cache::has($key)) {
+                        return Cache::get($key);
+                    }
+                }
+
+                throw new \Exception("No pornstar thumbnail present. Could not retrieve cache.");
+            }
+            else {
+                throw new \Exception("No pornstar thumbnail present. Could not retrieve cache.");
             }
         } else {
-            $key = 'thumb_' . $pornstar->id . '_' . $thumbnail->id;
+            $key = 'thumb_' . $pornstar_id . '_' . $thumbnail->id;
         }
 
         return Cache::get($key);

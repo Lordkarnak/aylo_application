@@ -2,111 +2,80 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\PornstarResource;
 use App\Models\Pornstar;
 use App\Services\PornstarService;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\File;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\View\View;
 
 class PornstarController extends Controller
 {
     /**
-     * Get a collection of all pornstars
-     * @return \Illuminate\Http\JsonResponse
+     * Display a listing of the resource.
      */
-    public function index(): JsonResponse|StreamedResponse
+    public function index(): View
     {
+        $service = new PornstarService();
 
-        $pornstarsCount = DB::table('pornstars')->count();
-
-        if ($pornstarsCount < 1) {
-            return response()->json(['message' => 'Could not find any pornstar.']);
-        }
-
-        return response()->stream(function() {
-            return PornstarResource::collection(Pornstar::all());
-        });
-    }
-
-    public function show($id): JsonResponse
-    {
-        try {
-            $response = new PornstarResource(Pornstar::findOrFail($id));
-        } catch (ModelNotFoundException $e) {
-            $response = ['message' => 'Could not find pornstar with id ' . $id];
-        } catch (\Exception $e) {
-            $response = $e->getMessage();
-        }
-
-        return response()->json($response);
-    }
-
-    /**
-     * Retrieve a thumbnail and display it on a browser, don't know why anyone would want this.
-     * Anyways, this method ensures the cache is working.
-     * @param \Illuminate\Http\Response $response
-     * @param string $id
-     * @param string $thumb_id
-     * @return JsonResponse|mixed|Response
-     */
-    public function getThumbnail(Response $response, string $id, string $thumb_id)
-    {
-        $key = 'thumb_' . $id . '_' . $thumb_id;
-
-        try {
-            // attempt to refresh cache and find the thumbnail
-            if (!Cache::has($key)) {
-                $service = new PornstarService();
-                $service->cacheByPornstar(Pornstar::find($id));
-            }
-        } catch (\Exception $e) {
-            echo $e->getMessage();
-            return response()->json(['message', $msg]);
-        }
-
-        // attempt to return the image
-        if (Cache::has($key)) {
-            return response()->make(Cache::get($key), 200, ['Content-Type' => 'image/png']);
-        }
+        $pornstars = Pornstar::paginate(15);
         
-        return response()->json(['message' => 'Thumbnail not found.']);
+        foreach ($pornstars as $pornstar) {
+            try {
+                $pornstar->cached_thumbnail = base64_encode($service->retrieveCachedImage($pornstar->id));
+            } catch (\Exception $e) {
+                // do nothing
+            }
+        }
+
+        return view('pornstars.index')
+        ->with('pornstars', $pornstars);
     }
 
     /**
-     * Dangerous method that could be abused by the api when a user forces a recreation of the refresh data.
-     * Possible cause of a DOS attack. Best to use the laravel command for refreshing the data.
-     * @return \Illuminate\Http\JsonResponse
+     * Show the form for creating a new resource.
      */
-    private function refreshData(): JsonResponse
+    public function create()
     {
-        $service = new PornstarService();
-        $items = $service->fetch(Config::get('app.feed_url'));
-        $service->store($items);
-        $service->cache();
-
-        // service
-        return response()->json(['message' => 'Local data refreshed successfully.']);
+        //
     }
 
     /**
-     * Refresh the cache for a given pornstar manually
-     * @param \App\Models\Pornstar $pornstar
-     * @return \Illuminate\Http\JsonResponse
+     * Store a newly created resource in storage.
      */
-    public function refreshCache(Pornstar $pornstar): JsonResponse
+    public function store(Request $request)
     {
-        $service = new PornstarService();
-        $service->cacheByPornstar($pornstar);
+        //
+    }
 
-        // service
-        return response()->json(['message' => 'Local cache for ' . $pornstar->name . ' refreshed successfully.']);
+    /**
+     * Display the specified resource.
+     */
+    public function show(string $id)
+    {
+        //
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(string $id)
+    {
+        //
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, string $id)
+    {
+        //
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(string $id)
+    {
+        //
     }
 }

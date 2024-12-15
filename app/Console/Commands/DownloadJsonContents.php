@@ -21,7 +21,7 @@ class DownloadJsonContents extends Command
      *
      * @var string
      */
-    protected $signature = 'app:get-pornstars {--force} {--debug} {--max-items=}';
+    protected $signature = 'app:get-pornstars {--force} {--debug} {--max=}';
 
     /**
      * The console command description.
@@ -49,7 +49,7 @@ class DownloadJsonContents extends Command
             $service = new PornstarService();
             $service->debug = $this->option('debug') ?? false;
             
-            $maxItems = $this->option('max-items') ?? -1;
+            $maxItems = $this->option('max') ?? -1;
             if ($maxItems > -1) {
                 $this->info("Parsing only [$maxItems] items");
             }
