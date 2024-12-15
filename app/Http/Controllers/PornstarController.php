@@ -13,18 +13,27 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PornstarController extends Controller
 {
-    public function index(): JsonResponse
+    /**
+     * Get a collection of all pornstars
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function index(): JsonResponse|StreamedResponse
     {
-        $response = PornstarResource::collection(Pornstar::all());
 
-        if (empty($response)) {
-            $response = ['message' => 'Could not find any pornstar.'];
+        $pornstarsCount = DB::table('pornstars')->count();
+
+        if ($pornstarsCount < 1) {
+            return response()->json(['message' => 'Could not find any pornstar.']);
         }
 
-        return response()->json($response);
+        return response()->stream(function() {
+            return PornstarResource::collection(Pornstar::all());
+        });
     }
 
     public function show($id): JsonResponse

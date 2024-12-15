@@ -2,6 +2,9 @@
 
 namespace Tests\Unit;
 
+use App\Models\Pornstar;
+use App\Models\PornstarThumbnail;
+use App\Models\PornstarThumbnailUrl;
 use App\Services\PornstarService;
 use PHPUnit\Framework\TestCase;
 
@@ -22,5 +25,16 @@ class PornstarServiceTest extends TestCase
         $this->assertIsArray($result, 'Result of fetch is array?');
         $this->assertIsArray($result[0], 'Result is array of arrays?');
         $this->assertArrayHasKey('id', $result[0], 'Result of fetch has id?');
+    }
+
+    public function test_cacheByPornstar()
+    {
+        $service = new PornstarService();
+
+        // make a pornstar without thumbnail
+        $pornstar = Pornstar::factory()->make();
+        $this->expectException($service->cacheByPornstar($pornstar));
+
+
     }
 }
