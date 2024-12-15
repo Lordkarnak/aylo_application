@@ -1,5 +1,7 @@
 FROM php:8.4.1-fpm
 
+USER root
+
 # Copy composer.lock and composer.json
 COPY composer.lock composer.json /var/www/
 
@@ -19,6 +21,7 @@ RUN apt-get update && apt-get install -y \
     locales \
     zip \
     unzip \
+    npm \
     jpegoptim optipng pngquant gifsicle \
     vim \
     git \
@@ -28,6 +31,8 @@ RUN apt-get update && apt-get install -y \
     libmcrypt-dev \
     libonig-dev \
     libpq-dev \
+    sudo \
+    libuser \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install extensions
@@ -40,11 +45,25 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
 COPY --from=composer/composer:latest-bin /composer /usr/bin/composer
 
 # Add user for laravel application
-RUN groupadd -g 1000 lordkarnak \
-    && useradd -u 1000 -ms /bin/bash -g lordkarnak lordkarnak
+RUN if [ ! $(getent group lordkarnak) ]; then lgroupadd -g 1000 lordkarnak; fi \
+    && if [ ! id lordkarnak ]; then luseradd -u 1000 -ms /bin/bash -g lordkarnak lordkarnak; fi
 
 # Copy existing application directory permissions
 COPY --chown=www-data:www-data . /var/www
+
+# Create the log file to be able to run tail
+RUN touch /var/log/cron.log      
+
+# Apply file permissions to the cron job
+RUN chmod 0666 /var/log/cron.log  
+
+# Late update, install cron because I forgot to do it in the large package
+RUN apt-get update && apt-get install -y cron
+
+# Add the cron job
+RUN { crontab -l -u lordkarnak; echo "* * * * * /usr/bin/php /var/www/html/artisan schedule:run >> /var/log/cron.log 2>&1"; } | crontab - 
+
+RUN npm create vite@latest
 
 # Change current user to www
 USER lordkarnak

@@ -43,7 +43,7 @@
     </div>
 
     @if (!empty($pornstars))
-    <table>
+    <table style="width: 150px">
         <thead>
             <tr>
                 <th>Name</th>
@@ -63,8 +63,10 @@
             @endforeach
         </tbody>
     </table>
-
-    {{ $pornstars->links() }}
+    <br/>
+    <div style="width: 350px">
+        {{ $pornstars->links() }}
+    </div>
     @endif
 
     <div class="footer">

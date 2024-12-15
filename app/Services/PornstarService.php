@@ -377,7 +377,7 @@ class PornstarService
                 
                 // cache and update table to indicate we cached this image
                 $key = $this->buildCacheKey($url->pornstar_id, $url->pornstar_thumbnail_id);
-                if ($this->storeToCache($key, $url->url)) {
+                if ($this->storeToCache($key, $url->url, true)) {
                     DB::table('pornstar_thumbnail_urls')
                         ->where('pornstar_id', $url->pornstar_id)
                         ->where('pornstar_thumbnail_id', $url->pornstar_thumbnail_id)
@@ -427,7 +427,7 @@ class PornstarService
         foreach ($urls as $item) {
             // cache
             $key = $this->buildCacheKey($pornstar->id, $item->pornstar_thumbnail_id);
-            $this->storeToCache($key, $item->url);
+            $this->storeToCache($key, $item->url, true);
             
             // update table to indicate we cached this image
             PornstarThumbnailUrl::where('pornstar_id', $pornstar->id)
