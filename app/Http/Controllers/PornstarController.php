@@ -21,7 +21,7 @@ class PornstarController extends Controller
         
         foreach ($pornstars as $pornstar) {
             try {
-                $pornstar->cached_thumbnail = base64_encode($service->retrieveCachedImage($pornstar->id));
+                $pornstar->cached_thumbnail = $service->retrieveCachedImage($pornstar->id);
             } catch (\Exception $e) {
                 // do nothing
             }

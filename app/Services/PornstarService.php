@@ -21,6 +21,12 @@ class PornstarService
 {
     public bool $debug = true;
     
+    /**
+     * Automated function to do fetching in one line
+     * @param string $url
+     * @throws \Exception
+     * @return void
+     */
     public function fetchAndSave(string $url)
     {
         $data = $this->fetch($url);
@@ -29,7 +35,7 @@ class PornstarService
         }
 
         $this->store($data);
-        $this->cache();
+        $this->cache($data);
     }
     
     public function fetch(string $url, $bForce = false, $maxItems = -1): array
@@ -54,7 +60,7 @@ class PornstarService
             $lastModified = new Carbon(Storage::lastModified("feed_pornstars.json"));
             $etag = Cache::get('feed_etag') ?? null;
             $response = Http::withHeader('If-Modified-Since', $lastModified->toRfc7231String())
-                // ->withHeader('If-None-Match', $etag)
+                ->withHeader('If-None-Match', $etag)
                 ->get($url);
                 
             // Not modified, if not forced to run, exit
@@ -368,15 +374,16 @@ class PornstarService
         while ($urls->isEmpty()) {
             try {
                 $url = $urls->pop();
-                $key = 'thumb_' . $url->pornstar_id . '_' . $url->pornstar_thumbnail_id;
-                if (!Cache::has($key)) {
-                    $response = Http::get($url->url);
-                    Cache::put($key, $response->body(), now()->addDay());
+                
+                // cache and update table to indicate we cached this image
+                $key = $this->buildCacheKey($url->pornstar_id, $url->pornstar_thumbnail_id);
+                if ($this->storeToCache($key, $url->url)) {
                     DB::table('pornstar_thumbnail_urls')
                         ->where('pornstar_id', $url->pornstar_id)
                         ->where('pornstar_thumbnail_id', $url->pornstar_thumbnail_id)
                         ->update(['cached' => 1]);
                 }
+                
             } catch (\Exception $e) {
                 if ($withProgressBar) { $progress->clear(); }
 
@@ -419,10 +426,10 @@ class PornstarService
         $urls = $urls->unique('url');
         foreach ($urls as $item) {
             // cache
-            $key = 'thumb_' . $pornstar->id . '_' . $item->pornstar_thumbnail_id;
-            $content = Http::get($item->url)->body();
-            Cache::put($key, $content, now()->addDay());
-
+            $key = $this->buildCacheKey($pornstar->id, $item->pornstar_thumbnail_id);
+            $this->storeToCache($key, $item->url);
+            
+            // update table to indicate we cached this image
             PornstarThumbnailUrl::where('pornstar_id', $pornstar->id)
                 ->where('pornstar_thumbnail_id', $item->pornstar_thumbnail_id)
                 ->update(['cached' => 1]);
@@ -440,14 +447,14 @@ class PornstarService
             $bSuccess = false;
             $thumbnailUrls = DB::table('pornstar_thumbnail_urls')->where('pornstar_id', $pornstar_id)->where('cached', 1)->get('id');
             foreach ($thumbnailUrls as $thumbnailUrl) {
-                $key = 'thumb_' . $pornstar_id . '_' . $thumbnailUrl->id;
+                $key = $this->buildCacheKey($pornstar_id, $thumbnailUrl->id);
                 $bSuccess = $bSuccess && Cache::forget($key);
             }
             
             return $bSuccess;
         }
 
-        $key = 'thumb_' . $pornstar_id . '_' . $thumbnail_id;
+        $key = $this->buildCacheKey($pornstar_id, $thumbnail_id);
         return Cache::forget($key);
     }
 
@@ -456,7 +463,7 @@ class PornstarService
         $bSuccess = false;
         $cachedThumbnails = PornstarThumbnail::where('cached', 1)->get(['id', 'pornstar_id']);
         foreach ($cachedThumbnails as $thumbnail) {
-            $key = 'thumb_' . $thumbnail['pornstar_id'] . '_' . $thumbnail['id'];
+            $key = $this->buildCacheKey($thumbnail['pornstar_id'], $thumbnail['id']);
             $bSuccess = $bSuccess && Cache::forget($key);
         }
         return $bSuccess;
@@ -471,7 +478,7 @@ class PornstarService
             $urls = DB::table('pornstar_thumbnail_urls')->where('pornstar_id', $pornstar_id)->where('cached', 1)->get();
             if ($urls) {
                 foreach ($urls as $url) {
-                    $key = 'thumb_' . $pornstar_id . '_' . $url->pornstar_thumbnail_id;
+                    $key = $this->buildCacheKey($pornstar_id, $url->pornstar_thumbnail_id);
                     if (Cache::has($key)) {
                         return Cache::get($key);
                     }
@@ -483,9 +490,30 @@ class PornstarService
                 throw new \Exception("No pornstar thumbnail present. Could not retrieve cache.");
             }
         } else {
-            $key = 'thumb_' . $pornstar_id . '_' . $thumbnail->id;
+            $key = $this->buildCacheKey($pornstar_id, $thumbnail->id);
         }
 
         return Cache::get($key);
+    }
+
+    private function buildCacheKey($id, $thumbnail_id) : string
+    {
+        return 'thumb_' . $id . '_' . $thumbnail_id;
+    }
+
+    /**
+     * Unified logic to store an item in cache
+     * @param mixed $url Url to fetch kinky content from
+     * @param bool $bForceInvalidate Force re-write of cache?
+     * @return void
+     */
+    private function storeToCache($key, $url, $bForceInvalidate = false): bool
+    {
+        if (!Cache::has($key) || $bForceInvalidate) {
+            // stream and encode the response directly inside the cache item
+            return Cache::put($key, base64_encode(Http::get($url)->body()), now()->addDay());
+        }
+
+        return false;
     }
 }
