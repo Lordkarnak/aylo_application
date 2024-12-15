@@ -21,7 +21,7 @@ class DownloadJsonContents extends Command
      *
      * @var string
      */
-    protected $signature = 'app:get-pornstars';
+    protected $signature = 'app:get-pornstars {--force} {--debug} {--max-items=}';
 
     /**
      * The console command description.
@@ -44,10 +44,24 @@ class DownloadJsonContents extends Command
          * I optimized the command memory requirements some more by passing the items array by reference so the items will vanish.
          */
         try {
+            $bForce = $this->option('force') ?? false;
+
             $service = new PornstarService();
-            $items = $service->fetch(Config::get('app.feed_url'));
+            $service->debug = $this->option('debug') ?? false;
+            
+            $maxItems = $this->option('max-items') ?? -1;
+            if ($maxItems > -1) {
+                $this->info("Parsing only [$maxItems] items");
+            }
+            $items = $service->fetch(Config::get('app.feed_url'), $bForce, $maxItems);
+
+            $this->info('Storing items...');
             $service->store($items, true);
-            $service->cache(true);
+            $this->info('Done!');
+
+            $this->info('Caching items thumbnails...');
+            $service->cache($items, true);
+            $this->info('Done!');
 
             // a progress bar to beautify this process
             /* $bar = $this->output->createProgressBar(count($items));
@@ -67,6 +81,9 @@ class DownloadJsonContents extends Command
             } */
         } catch (\Exception $e) {
             $this->error($e->getMessage());
+            if (str_contains($e->getMessage(), 'not modified')) {
+                $this->error('Try running this command with option --force to retrieve content.');
+            }
         }
 
         // $bar->finish();

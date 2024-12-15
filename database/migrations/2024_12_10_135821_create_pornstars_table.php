@@ -28,18 +28,18 @@ return new class extends Migration
             $table->string("breast_type", 5)->nullable()->default(null);
             $table->string("gender", 20)->nullable()->default(null);
             $table->string("orientation", 40)->nullable()->default(null);
-            $table->unsignedInteger("age")->nullable()->default(null);
+            $table->unsignedTinyInteger("age")->nullable()->default(null);
 
             // stats
-            $table->mediumInteger("subscriptions")->nullable()->default(null);
-            $table->mediumInteger("monthly_searches")->nullable()->default(null);
-            $table->mediumInteger("views")->nullable()->default(null);
-            $table->mediumInteger("videos_count")->nullable()->default(null);
-            $table->mediumInteger("premium_videos_count")->nullable()->default(null);
-            $table->mediumInteger("white_label_video_count")->nullable()->default(null);
-            $table->mediumInteger("rank")->nullable()->default(null);
-            $table->mediumInteger("rank_premium")->nullable()->default(null);
-            $table->mediumInteger("rank_wl")->nullable()->default(null);
+            $table->unsignedBigInteger("subscriptions")->nullable()->default(null);
+            $table->unsignedBigInteger("monthly_searches")->nullable()->default(null);
+            $table->unsignedBigInteger("views")->nullable()->default(null);
+            $table->unsignedBigInteger("videos_count")->nullable()->default(null);
+            $table->unsignedBigInteger("premium_videos_count")->nullable()->default(null);
+            $table->unsignedBigInteger("white_label_video_count")->nullable()->default(null);
+            $table->unsignedBigInteger("rank")->nullable()->default(null);
+            $table->unsignedBigInteger("rank_premium")->nullable()->default(null);
+            $table->unsignedBigInteger("rank_wl")->nullable()->default(null);
 
             // stamps
             $table->timestamps();

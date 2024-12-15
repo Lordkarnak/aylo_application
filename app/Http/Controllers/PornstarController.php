@@ -61,10 +61,15 @@ class PornstarController extends Controller
     {
         $key = 'thumb_' . $id . '_' . $thumb_id;
 
-        // attempt to refresh cache and find the thumbnail
-        if (!Cache::has($key)) {
-            $service = new PornstarService();
-            $service->cacheByPornstar(Pornstar::find($id));
+        try {
+            // attempt to refresh cache and find the thumbnail
+            if (!Cache::has($key)) {
+                $service = new PornstarService();
+                $service->cacheByPornstar(Pornstar::find($id));
+            }
+        } catch (\Exception $e) {
+            echo $e->getMessage();
+            return response()->json(['message', $msg]);
         }
 
         // attempt to return the image

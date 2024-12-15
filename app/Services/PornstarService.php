@@ -32,7 +32,7 @@ class PornstarService
         $this->cache();
     }
     
-    public function fetch(string $url, $bForce = false): array
+    public function fetch(string $url, $bForce = false, $maxItems = -1): array
     {
         if (empty($url)) { return []; }
 
@@ -70,6 +70,8 @@ class PornstarService
             $response->close();
         }
         
+        $parsedItems = 0;
+
         // we always read the file locally using the good ol' streaming techniques of php
         $stream = Storage::readStream("feed_pornstars.json");
         $chunkSize = 4096; // large chunks of 4kb hold enough info to begin decoding
@@ -79,6 +81,10 @@ class PornstarService
         $output = [];
         
         while (!feof($stream)) {
+            // Condition to break loop early if we need to parse only N items
+            // Useful to not wait for 21k items to be processed
+            if ($maxItems != -1 && $parsedItems >= $maxItems) { break; }
+
             $line = fread($stream, $chunkSize);
 
             // handle undecoded line from previous chunk
@@ -128,6 +134,7 @@ class PornstarService
                             // successfull parse, store the line
                             if (!empty($parsedLine)) {
                                 $output[] = $parsedLine;
+                                $parsedItems++;
                             }
                         } else {
                             if ($this->debug) {
@@ -137,6 +144,7 @@ class PornstarService
                     }
                     else if (!empty($parsedLine)) {
                         $output[] = $parsedLine;
+                        $parsedItems++;
                     }
                     $trueIndex++;
                 }
@@ -203,7 +211,7 @@ class PornstarService
         return $pornstar;
     }
 
-    public function store(array &$items, $withProgressBar = false)
+    public function store(array $items, $withProgressBar = false)
     {
         // $pornstarRecords = [];
         // $thumbnailRecords = [];
@@ -337,27 +345,28 @@ class PornstarService
         if ($withProgressBar) { $progress->finish(); }
     }
 
-    public function cache($withProgressBar = false)
+    public function cache(array $items, $withProgressBar = false)
     {
-        $items = DB::table('pornstar_thumbnail_urls')->select(DB::raw('MIN(pornstar_id) AS pornstar_id, MIN(pornstar_thumbnail_id) AS pornstar_thumbnail_id, url'))->groupBy('url')->where('cached', 0)->get();
+        // $items = DB::table('pornstar_thumbnail_urls')->select(DB::raw('MIN(pornstar_id) AS pornstar_id, MIN(pornstar_thumbnail_id) AS pornstar_thumbnail_id, url'))->groupBy('url')->where('cached', 0)->get();
 
+        $progressCount = count($items);
         if ($withProgressBar) {
             $consoleOutput = new ConsoleOutput();
-            $progress = new ProgressBar($consoleOutput, $items->count());
+            $progress = new ProgressBar($consoleOutput, $progressCount);
             $progress->start();
         }
 
         while (!empty($items)) {
             try {
-                $item = $items->pop();
-                $key = 'thumb_' . $item->pornstar_id . '_' . $item->pornstar_thumbnail_id;
+                $item = array_pop($items);
+                $key = 'thumb_' . $item['pornstar_id'] . '_' . $item['pornstar_thumbnail_id'];
                 if (!Cache::has($key)) {
                     $response = Http::get($item->url);
                     $content = $response->body();
                     Cache::put($key, $content, now()->addDay());
                     DB::table('pornstar_thumbnail_urls')
-                        ->where('pornstar_id', $item->pornstar_id)
-                        ->where('pornstar_thumbnail_id', $item->pornstar_thumbnail_id)
+                        ->where('pornstar_id', $item['pornstar_id'])
+                        ->where('pornstar_thumbnail_id', $item['pornstar_thumbnail_id'])
                         ->update(['cached' => 1]);
                 }
             } catch (\Exception $e) {
@@ -376,7 +385,7 @@ class PornstarService
         if ($withProgressBar) { $progress->finish(); }
     }
 
-    public function cacheByPornstar(Pornstar $pornstar)
+    public function cacheByPornstar(?Pornstar $pornstar)
     {
         if (empty($pornstar)) {
             throw new \Exception('No pornstar present. Skipping cache.');
