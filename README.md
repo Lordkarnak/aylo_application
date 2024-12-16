@@ -27,12 +27,16 @@ Note that npm is only needed to display the basic frontend.
 Two console commands are available for utilizing the cache:
 
 **- app:get-pornstars** [options]
-  --force Force download of new entries
-  --debug Display debug info and error messages
-  --max Max entries to store.
+
+`--force` Force download of new entries
+  
+`--debug` Display debug info and error messages
+  
+`--max` Max entries to store.
   
 **- app:refresh-cache** [options]
-    --debug Display error messages, if any
+
+`--debug` Display error messages, if any
 
 ## Schedule
 The console command to get entries is set to run twice per day to check if any modifications were made to the original file and retrieve new content.
