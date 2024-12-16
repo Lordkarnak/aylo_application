@@ -4,6 +4,26 @@ An application that downloads entries from a given url and stores them locally. 
 An .env is included to boost deployment and test functionality.
 The app can be containerized in docker and run in a fixed environment using php8.4-fpm, nginx, mysql-8.4.3
 
+## Installation
+<ul>
+    <li>Make sure to have docker installed locally.</li>
+    <li>Clone the application in a directory</li>
+    <li>Navigate to that directory and run the following commands in the cmd</li>
+</ul>
+
+<code>
+docker compose up --build --detach
+docker compose exec app bash
+</code>
+
+Inside the app terminal you can then run laravel artisan commands, control the environment, install or remove packages as needed.
+<code>
+php artisan migrate
+npm run build
+</code>
+
+Note that npm is only needed to display the basic frontend.
+
 ## Console
 Two console commands are available for utilizing the cache:
 
